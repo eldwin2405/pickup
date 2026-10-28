@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perapi Rekap Penjualan POS - ESB Sales Formatter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Textareas and Tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm shadow-emerald-600/20">
+                    <i data-lucide="receipt" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Perapi Rekap Penjualan POS</h1>
+                    <p class="text-xs text-slate-500">Ubah teks mentah ESB POS menjadi daftar laporan rapi & hitung total otomatis</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span id="outletBadge" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                    <i data-lucide="store" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span id="outletNameText">Siap Memproses</span>
+                </span>
+                <button id="btnLoadSampleTop" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    Muat Contoh Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Quick Guide Banner -->
+        <div class="mb-6 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start sm:items-center gap-3">
+                <div class="p-2 rounded-lg bg-blue-50 text-blue-600 shrink-0 mt-0.5 sm:mt-0">
+                    <i data-lucide="info" class="w-5 h-5"></i>
+                </div>
+                <div class="text-xs sm:text-sm text-slate-600">
+                    <span class="font-semibold text-slate-800">Cara Pakai:</span> Blok seluruh halaman atau tabel di sistem POS (<kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono">Ctrl+A</kbd> lalu <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono">Ctrl+C</kbd>), lalu tempel (<kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono">Ctrl+V</kbd>) pada kotak sebelah kiri. Header & teks yang tidak perlu akan dibuang otomatis.
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Column Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Column: Raw Input & Settings (6 cols) -->
+            <div class="lg:col-span-6 space-y-5">
+                
+                <!-- Input Card -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="clipboard-paste" class="w-4 h-4 text-emerald-600"></i>
+                            <h2 class="font-semibold text-slate-800 text-sm">1. Tempel Teks Mentah POS</h2>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button id="btnPaste" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors shadow-sm" title="Tempel dari Clipboard">
+                                <i data-lucide="clipboard" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                Tempel (Paste)
+                            </button>
+                            <button id="btnSample" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors shadow-sm">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-600"></i>
+                                Contoh Data
+                            </button>
+                            <button id="btnClear" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors shadow-sm">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                Bersihkan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <textarea 
+                            id="rawInput" 
+                            rows="11" 
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs font-mono text-slate-700 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all resize-y"
+                            placeholder="Tempel (Paste) teks dari halaman Sales Recapitulation POS di sini...&#10;&#10;Contoh:&#10;Enable&#10;Tue, 27 Oct 2026 14:50:55&#10;1301.BPPSOE&#10;...&#10;S1301179308334703	1301202610270305	27-10-2026	Non Member		Widi	Quick Service	10. PICKUP	46.000	Finished	QRIS ESB ORDER	14:42:27	SYSTEM"
+                        ></textarea>
+
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                            <span id="inputStatusText">Menunggu input data...</span>
+                            <button id="btnProcess" type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl shadow-sm shadow-emerald-600/20 transition-all text-xs">
+                                <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
+                                Proses Data Sekarang
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Card -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-600"></i>
+                            <h2 class="font-semibold text-slate-800 text-sm">2. Pengaturan Format & Urutan</h2>
+                        </div>
+                        <span class="text-[11px] text-slate-400">Otomatis memperbarui hasil</span>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <!-- Sorting & Separator Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="sortOrder" class="block text-xs font-medium text-slate-700 mb-1.5">Urutan Transaksi</label>
+                                <select id="sortOrder" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 font-medium focus:bg-white focus:border-emerald-500 focus:outline-none">
+                                    <option value="original">Sesuai Urutan Asli (Terbaru di Atas)</option>
+                                    <option value="chronological">Urutkan Jam Paling Awal (Pagi ke Malam)</option>
+                                    <option value="amount_desc">Nominal Terbesar ke Terkecil</option>
+                                    <option value="amount_asc">Nominal Terkecil ke Terbesar</option>
+                                    <option value="name_asc">Nama Customer (A - Z)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="separatorStyle" class="block text-xs font-medium text-slate-700 mb-1.5">Gaya Pemisah</label>
+                                <select id="separatorStyle" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 font-medium focus:bg-white focus:border-emerald-500 focus:outline-none">
+                                    <option value=" - ">Strip Spasi (1. Pick Up - Widi - 46.000)</option>
+                                    <option value=" | ">Garis Tegak (1. Pick Up | Widi | 46.000)</option>
+                                    <option value=" — ">Strip Panjang (1. Pick Up — Widi — 46.000)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Checkboxes for Customizing Format -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <span class="block text-xs font-medium text-slate-700 mb-2.5">Elemen yang Ditampilkan</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkShowPurpose" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Jenis Kunjungan (<span class="font-mono text-slate-500">Pick Up</span>)</span>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkShowTime" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Jam Transaksi (<span class="font-mono text-slate-500">14:42</span>)</span>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkShowTotal" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Baris <span class="font-semibold">Total</span> di Akhir</span>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkWhatsappBold" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Format Tebal WA (<span class="font-mono text-slate-500">*Total: ...*</span>)</span>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkIncludeHeader" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Sertakan Judul & Tanggal di Atas</span>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer transition-colors">
+                                    <input type="checkbox" id="chkDeduplicate" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                    <span class="text-xs text-slate-700">Hapus Duplikat ID Transaksi</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Clean Output & Interactive Table (6 cols) -->
+            <div class="lg:col-span-6 space-y-5">
+
+                <!-- Summary Stats Cards -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Jumlah Transaksi</div>
+                        <div id="statCount" class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">0</div>
+                        <div id="statDate" class="text-[11px] text-slate-400 mt-0.5 truncate">-</div>
+                    </div>
+
+                    <div class="bg-emerald-600 p-4 rounded-2xl border border-emerald-700 shadow-sm text-white col-span-2 flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-medium text-emerald-100 uppercase tracking-wider">Total Nominal Transaksi</span>
+                            <span id="statTimeRange" class="text-[11px] bg-emerald-700/70 text-emerald-100 px-2 py-0.5 rounded-md font-mono">-</span>
+                        </div>
+                        <div class="flex items-baseline gap-1.5 mt-1">
+                            <span class="text-sm font-medium text-emerald-200">Rp</span>
+                            <span id="statTotal" class="text-2xl sm:text-3xl font-bold tracking-tight font-mono">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formatted Text Result Card -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                            <h2 class="font-semibold text-slate-800 text-sm">3. Hasil Teks Sederhana (Siap Salin)</h2>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button id="btnCopy" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-semibold rounded-xl shadow-sm shadow-emerald-600/20 transition-all">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                <span id="copyBtnText">Salin Hasil (Copy)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="relative">
+                            <textarea 
+                                id="cleanOutput" 
+                                rows="12" 
+                                readonly
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:text-sm font-mono text-slate-800 leading-relaxed focus:bg-white focus:border-emerald-500 focus:outline-none transition-colors resize-y"
+                                placeholder="Hasil teks yang sudah dirapikan akan muncul di sini..."
+                            ></textarea>
+
+                            <!-- Toast Notification inside Output Box -->
+                            <div id="copyToast" class="hidden absolute top-3 right-3 bg-slate-900/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 transition-all">
+                                <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                <span>Berhasil disalin ke clipboard!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Parsed Table (Allows toggling specific rows) -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="table-2" class="w-4 h-4 text-emerald-600"></i>
+                            <h3 class="font-semibold text-slate-800 text-sm">Rincian Tabel Transaksi</h3>
+                        </div>
+                        <span class="text-[11px] text-slate-500">Centang/hapus centang untuk memilih transaksi</span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-72">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                                <tr>
+                                    <th class="py-2.5 px-3 w-8 text-center">
+                                        <input type="checkbox" id="chkToggleAll" checked class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer" title="Pilih Semua">
+                                    </th>
+                                    <th class="py-2.5 px-2.5">#</th>
+                                    <th class="py-2.5 px-3">Kunjungan</th>
+                                    <th class="py-2.5 px-3">Nama Customer</th>
+                                    <th class="py-2.5 px-3 text-right">Nominal</th>
+                                    <th class="py-2.5 px-3 text-center">Jam</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-slate-100 text-xs text-slate-700">
+                                <tr>
+                                    <td colspan="6" class="py-8 text-center text-slate-400">
+                                        Belum ada data transaksi yang diproses.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Status Notification Modal / Message Bar (Non-blocking) -->
+    <div id="messageBanner" class="fixed bottom-5 right-5 z-50 hidden max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-3 text-xs">
+        <i data-lucide="info" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+        <span id="messageBannerText">Notifikasi</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-10 border-t border-slate-200 bg-white py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+            <span>Perapi Rekapitulasi Penjualan POS (ESB POS Sales Recapitulation)</span>
+            <span>Memproses otomatis di perangkat Anda (100% Privasi Aman)</span>
+        </div>
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Sample raw POS text from the user's actual workflow
+        const SAMPLE_POS_DATA = `Enable
+Tue, 27 Oct 2026 14:50:55
+1301.BPPSOE
+KASIR1-SERVER
+Sales Recapitulation
+Sales Overview
+Online Payment
+Date
+27-10-2026 - 27-10-2026
+Transaction / Bill Number
+Search by transaction / bill number
+Member / Customer
+Search by member / customer name
+Table
+Search by table name
+Visit Purpose 10. PICKUP	
+ 
+Payment Method Search by payment method	
+ 
+Information
+Search by additional info
+Date
+S1301179308334703	1301202610270305	27-10-2026	Non Member		Widi	Quick Service	10. PICKUP	46.000	Finished	QRIS ESB ORDER	14:42:27	SYSTEM
+S1301179308326180	1301202610270304	27-10-2026	Non Member		Riyan adi Setyawan	Quick Service	10. PICKUP	29.000	Finished	QRIS ESB ORDER	14:41:01	SYSTEM
+S1301179308316770	1301202610270302	27-10-2026	Non Member		Yasna	Quick Service	10. PICKUP	52.500	Finished	QRIS ESB ORDER	14:39:27	SYSTEM
+S1301179308124194	1301202610270284	27-10-2026	Non Member		Ibnu	Quick Service	10. PICKUP	23.500	Finished	QRIS ESB ORDER	14:07:22	SYSTEM
+S1301179308117991	1301202610270282	27-10-2026	Non Member		Rismawati	Quick Service	10. PICKUP	136.000	Finished	QRIS ESB ORDER	14:06:20	SYSTEM
+S1301179308075891	1301202610270276	27-10-2026	Non Member		Mikuu	Quick Service	10. PICKUP	56.000	Finished	QRIS ESB ORDER	13:59:19	SYSTEM
+S1301179308069519	1301202610270274	27-10-2026	Non Member		Eka	Quick Service	10. PICKUP	55.000	Finished	QRIS ESB ORDER	13:58:15	SYSTEM
+S1301179307964551	1301202610270259	27-10-2026	Non Member		Okta	Quick Service	10. PICKUP	11.500	Finished	QRIS ESB ORDER	13:40:45	SYSTEM
+S1301179307929938	1301202610270249	27-10-2026	Non Member		Mahadri	Quick Service	10. PICKUP	25.000	Finished	QRIS ESB ORDER	13:34:59	SYSTEM
+S1301179307926802	1301202610270248	27-10-2026	Non Member		Okta	Quick Service	10. PICKUP	11.500	Finished	QRIS ESB ORDER	13:34:28	SYSTEM
+1 - 10 of 43`;
+
+        // Application State
+        let parsedTransactions = [];
+        let metadata = {
+            outlet: '',
+            date: ''
+        };
+
+        // DOM Elements
+        const rawInput = document.getElementById('rawInput');
+        const cleanOutput = document.getElementById('cleanOutput');
+        const inputStatusText = document.getElementById('inputStatusText');
+        const outletBadge = document.getElementById('outletBadge');
+        const outletNameText = document.getElementById('outletNameText');
+
+        const btnPaste = document.getElementById('btnPaste');
+        const btnSample = document.getElementById('btnSample');
+        const btnLoadSampleTop = document.getElementById('btnLoadSampleTop');
+        const btnClear = document.getElementById('btnClear');
+        const btnProcess = document.getElementById('btnProcess');
+        const btnCopy = document.getElementById('btnCopy');
+        const copyBtnText = document.getElementById('copyBtnText');
+        const copyToast = document.getElementById('copyToast');
+
+        const sortOrder = document.getElementById('sortOrder');
+        const separatorStyle = document.getElementById('separatorStyle');
+        const chkShowPurpose = document.getElementById('chkShowPurpose');
+        const chkShowTime = document.getElementById('chkShowTime');
+        const chkShowTotal = document.getElementById('chkShowTotal');
+        const chkWhatsappBold = document.getElementById('chkWhatsappBold');
+        const chkIncludeHeader = document.getElementById('chkIncludeHeader');
+        const chkDeduplicate = document.getElementById('chkDeduplicate');
+        const chkToggleAll = document.getElementById('chkToggleAll');
+
+        const statCount = document.getElementById('statCount');
+        const statTotal = document.getElementById('statTotal');
+        const statDate = document.getElementById('statDate');
+        const statTimeRange = document.getElementById('statTimeRange');
+        const tableBody = document.getElementById('tableBody');
+
+        const messageBanner = document.getElementById('messageBanner');
+        const messageBannerText = document.getElementById('messageBannerText');
+        let bannerTimeout = null;
+
+        /**
+         * Displays a subtle floating notification banner
+         */
+        function showNotification(msg) {
+            messageBannerText.textContent = msg;
+            messageBanner.classList.remove('hidden');
+            if (bannerTimeout) clearTimeout(bannerTimeout);
+            bannerTimeout = setTimeout(() => {
+                messageBanner.classList.add('hidden');
+            }, 3000);
+        }
+
+        /**
+         * Formats integer number into Indonesian thousands format (e.g. 446000 -> "446.000")
+         */
+        function formatRibuan(number) {
+            return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        /**
+         * Parses Indonesian formatted nominal string (e.g. "136.000") into integer (136000)
+         */
+        function parseNominal(nominalStr) {
+            if (!nominalStr) return 0;
+            // Remove dots and non-digits
+            const cleaned = nominalStr.replace(/\./g, '').replace(/[^\d]/g, '');
+            return parseInt(cleaned, 10) || 0;
+        }
+
+        /**
+         * Normalizes Visit Purpose (e.g. "10. PICKUP" -> "Pick Up", "DINE IN" -> "Dine In")
+         */
+        function formatVisitPurpose(rawPurpose) {
+            if (!rawPurpose) return 'Pick Up';
+            // Strip leading numbers like "10. "
+            let cleaned = rawPurpose.replace(/^\d+\.\s*/, '').trim();
+            
+            // Special case for PICKUP / PICK UP
+            if (/^pick\s*up$/i.test(cleaned)) {
+                return 'Pick Up';
+            }
+            
+            // General Title Case for other visit purposes (e.g., DINE IN -> Dine In, TAKE AWAY -> Take Away)
+            return cleaned.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+        }
+
+        /**
+         * Parses raw text from ESB POS Sales Recapitulation
+         */
+        function parseRawPosText(rawText) {
+            const lines = rawText.split(/\r?\n/);
+            const results = [];
+            const seenTxIds = new Set();
+            const deduplicate = chkDeduplicate.checked;
+
+            let detectedOutlet = '';
+            let detectedDate = '';
+
+            // Primary Regex matching ESB POS transaction row (supports tabs or spaces)
+            // Captures: 1:TxID, 2:BillNo, 3:Date, 4:CustomerName, 5:VisitPurpose, 6:Nominal, 7:Time (optional)
+            const primaryRegex = /^(S\d+)\s+(\d+)\s+(\d{2}-\d{2}-\d{4})\s+(?:Non Member|Member)\s+(.+?)\s+Quick Service\s+(?:\d+\.\s*)?([A-Za-z\s]+?)\s+([\d.]+)\s+Finished(?:\s+.+?\s+(\d{2}:\d{2}:\d{2}))?/i;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // Detect Outlet Code (e.g., 1301.BPPSOE)
+                if (!detectedOutlet && /^\d{3,5}\.[A-Z0-9_-]+$/i.test(line)) {
+                    detectedOutlet = line;
+                }
+
+                // Try Primary Regex
+                const match = line.match(primaryRegex);
+                if (match) {
+                    const txId = match[1].trim();
+                    const billNo = match[2].trim();
+                    const dateStr = match[3].trim();
+                    const customerName = match[4].trim();
+                    const purposeRaw = match[5].trim();
+                    const nominalStr = match[6].trim();
+                    const timeStr = match[7] ? match[7].trim() : '';
+
+                    if (!detectedDate && dateStr) detectedDate = dateStr;
+
+                    if (deduplicate && seenTxIds.has(txId)) {
+                        continue;
+                    }
+                    seenTxIds.add(txId);
+
+                    results.push({
+                        id: txId,
+                        billNo: billNo,
+                        date: dateStr,
+                        customer: customerName,
+                        purpose: formatVisitPurpose(purposeRaw),
+                        nominalRaw: nominalStr,
+                        nominalValue: parseNominal(nominalStr),
+                        time: timeStr || '00:00:00',
+                        selected: true,
+                        originalIndex: results.length
+                    });
+                    continue;
+                }
+
+                // Fallback Tab-based parser if table service name isn't "Quick Service" or Member column varies
+                if (/^S\d+/.test(line) && line.includes('\t')) {
+                    const parts = line.split('\t').map(p => p.trim());
+                    // Expected standard tab columns in ESB POS:
+                    // [0] S1301..., [1] BillNo, [2] Date, [3] MemberType, [4] MemberID(optional), [5] Customer, [6] Table/Service, [7] VisitPurpose, [8] Nominal, [9] Status, [10] Payment, [11] Time
+                    const nonEmptyParts = parts.filter(p => p !== '');
+                    if (nonEmptyParts.length >= 7) {
+                        const txId = nonEmptyParts[0];
+                        if (deduplicate && seenTxIds.has(txId)) continue;
+
+                        const dateStr = nonEmptyParts[2] || '';
+                        // Find "Finished" or "Paid" index to anchor Nominal and Purpose reliably
+                        const statusIdx = nonEmptyParts.findIndex(p => /^(Finished|Paid|Settled)$/i.test(p));
+                        if (statusIdx >= 5) {
+                            const nominalStr = nonEmptyParts[statusIdx - 1];
+                            const purposeRaw = nonEmptyParts[statusIdx - 2];
+                            // Customer name is right after "Non Member" / "Member"
+                            const customerName = nonEmptyParts[4] || 'Customer';
+                            // Time is usually 2 positions after Finished
+                            const timeMatch = line.match(/(\d{2}:\d{2}:\d{2})/);
+                            const timeStr = timeMatch ? timeMatch[1] : '';
+
+                            if (!detectedDate && /^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+                                detectedDate = dateStr;
+                            }
+
+                            seenTxIds.add(txId);
+                            results.push({
+                                id: txId,
+                                billNo: nonEmptyParts[1] || '',
+                                date: dateStr,
+                                customer: customerName,
+                                purpose: formatVisitPurpose(purposeRaw),
+                                nominalRaw: nominalStr,
+                                nominalValue: parseNominal(nominalStr),
+                                time: timeStr || '00:00:00',
+                                selected: true,
+                                originalIndex: results.length
+                            });
+                        }
+                    }
+                }
+            }
+
+            metadata.outlet = detectedOutlet;
+            metadata.date = detectedDate;
+
+            return results;
+        }
+
+        /**
+         * Returns sorted transactions based on current dropdown selection
+         */
+        function getSortedTransactions(list) {
+            const mode = sortOrder.value;
+            const copy = [...list];
+
+            if (mode === 'chronological') {
+                copy.sort((a, b) => a.time.localeCompare(b.time));
+            } else if (mode === 'amount_desc') {
+                copy.sort((a, b) => b.nominalValue - a.nominalValue);
+            } else if (mode === 'amount_asc') {
+                copy.sort((a, b) => a.nominalValue - b.nominalValue);
+            } else if (mode === 'name_asc') {
+                copy.sort((a, b) => a.customer.localeCompare(b.customer, 'id'));
+            } else {
+                copy.sort((a, b) => a.originalIndex - b.originalIndex);
+            }
+            return copy;
+        }
+
+        /**
+         * Updates the Output Textarea, Summary Cards, and Preview Table
+         */
+        function renderOutput() {
+            const sorted = getSortedTransactions(parsedTransactions);
+            const activeItems = sorted.filter(item => item.selected);
+
+            const sep = separatorStyle.value;
+            const showPurpose = chkShowPurpose.checked;
+            const showTime = chkShowTime.checked;
+            const showTotal = chkShowTotal.checked;
+            const waBold = chkWhatsappBold.checked;
+            const includeHeader = chkIncludeHeader.checked;
+
+            // Update Outlet Badge
+            if (metadata.outlet) {
+                outletNameText.textContent = metadata.outlet;
+                outletBadge.classList.remove('hidden');
+            } else {
+                outletNameText.textContent = 'Siap Memproses';
+            }
+
+            // Calculate Total
+            const totalValue = activeItems.reduce((sum, item) => sum + item.nominalValue, 0);
+            const formattedTotal = formatRibuan(totalValue);
+
+            // Build Formatted Lines
+            const outputLines = [];
+
+            if (includeHeader && activeItems.length > 0) {
+                const headerParts = ['REKAP TRANSAKSI POS'];
+                if (metadata.outlet) headerParts.push(metadata.outlet);
+                if (metadata.date) headerParts.push(`(${metadata.date})`);
+                const headerTitle = headerParts.join(' - ');
+                outputLines.push(waBold ? `*${headerTitle}*` : headerTitle);
+                outputLines.push('');
+            }
+
+            activeItems.forEach((item, idx) => {
+                const rowParts = [];
+                if (showTime && item.time && item.time !== '00:00:00') {
+                    // Show HH:MM for cleaner look
+                    const shortTime = item.time.substring(0, 5);
+                    rowParts.push(`[${shortTime}]`);
+                }
+                if (showPurpose) {
+                    rowParts.push(item.purpose);
+                }
+                rowParts.push(item.customer);
+                rowParts.push(formatRibuan(item.nominalValue));
+
+                outputLines.push(`${idx + 1}. ${rowParts.join(sep)}`);
+            });
+
+            if (showTotal && activeItems.length > 0) {
+                const totalLine = `Total: ${formattedTotal}`;
+                outputLines.push(waBold ? `*${totalLine}*` : totalLine);
+            }
+
+            cleanOutput.value = outputLines.join('\n');
+
+            // Update Summary Statistics
+            statCount.textContent = activeItems.length;
+            statTotal.textContent = formattedTotal;
+            statDate.textContent = metadata.date ? `Tanggal: ${metadata.date}` : 'Semua Tanggal';
+
+            if (activeItems.length > 0) {
+                const times = activeItems
+                    .map(i => i.time.substring(0, 5))
+                    .filter(t => t !== '00:00')
+                    .sort();
+                if (times.length > 0) {
+                    statTimeRange.textContent = `${times[0]} - ${times[times.length - 1]}`;
+                } else {
+                    statTimeRange.textContent = '-';
+                }
+            } else {
+                statTimeRange.textContent = '-';
+            }
+
+            // Render Interactive Preview Table
+            renderTable(sorted);
+        }
+
+        /**
+         * Renders the interactive table of parsed transactions
+         */
+        function renderTable(sortedList) {
+            if (sortedList.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400">
+                            Belum ada baris transaksi POS yang terdeteksi.
+                        </td>
+                    </tr>
+                `;
+                chkToggleAll.checked = false;
+                return;
+            }
+
+            const allSelected = sortedList.every(item => item.selected);
+            chkToggleAll.checked = allSelected;
+
+            let html = '';
+            let activeNumber = 1;
+
+            sortedList.forEach((item) => {
+                const displayNum = item.selected ? activeNumber++ : '-';
+                const rowOpacity = item.selected ? '' : 'opacity-40 bg-slate-50 line-through';
+
+                html += `
+                    <tr class="hover:bg-slate-50/80 transition-colors ${rowOpacity}">
+                        <td class="py-2.5 px-3 text-center">
+                            <input 
+                                type="checkbox" 
+                                data-id="${item.id}-${item.originalIndex}" 
+                                ${item.selected ? 'checked' : ''} 
+                                class="row-checkbox w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                            >
+                        </td>
+                        <td class="py-2.5 px-2.5 font-mono text-slate-400">${displayNum}</td>
+                        <td class="py-2.5 px-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                                ${escapeHtml(item.purpose)}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-3 font-medium text-slate-800">${escapeHtml(item.customer)}</td>
+                        <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">${formatRibuan(item.nominalValue)}</td>
+                        <td class="py-2.5 px-3 text-center font-mono text-slate-400">${item.time.substring(0, 5)}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+
+            // Attach checkbox listeners
+            const checkboxes = tableBody.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const key = e.target.getAttribute('data-id');
+                    const targetItem = parsedTransactions.find(t => `${t.id}-${t.originalIndex}` === key);
+                    if (targetItem) {
+                        targetItem.selected = e.target.checked;
+                        renderOutput();
+                    }
+                });
+            });
+        }
+
+        /**
+         * Escapes HTML characters for safe table rendering
+         */
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /**
+         * Main trigger to parse raw input and update UI
+         */
+        function processInput() {
+            const raw = rawInput.value;
+            if (!raw.trim()) {
+                parsedTransactions = [];
+                metadata = { outlet: '', date: '' };
+                inputStatusText.textContent = 'Menunggu input data...';
+                renderOutput();
+                return;
+            }
+
+            parsedTransactions = parseRawPosText(raw);
+            if (parsedTransactions.length > 0) {
+                inputStatusText.innerHTML = `<span class="text-emerald-600 font-medium">✓ ${parsedTransactions.length} transaksi berhasil dikenali</span>`;
+            } else {
+                inputStatusText.innerHTML = `<span class="text-amber-600 font-medium">Tidak ditemukan pola baris transaksi POS (S1301...)</span>`;
+            }
+            renderOutput();
+        }
+
+        // Event Listeners
+        rawInput.addEventListener('input', processInput);
+        btnProcess.addEventListener('click', () => {
+            processInput();
+            showNotification(`Berhasil memproses ${parsedTransactions.length} transaksi.`);
+        });
+
+        // Load Sample Data
+        function loadSampleData() {
+            rawInput.value = SAMPLE_POS_DATA;
+            processInput();
+            showNotification('Contoh data 10 transaksi POS berhasil dimuat.');
+        }
+
+        btnSample.addEventListener('click', loadSampleData);
+        btnLoadSampleTop.addEventListener('click', loadSampleData);
+
+        // Clear Data
+        btnClear.addEventListener('click', () => {
+            rawInput.value = '';
+            processInput();
+            rawInput.focus();
+            showNotification('Kotak input dan hasil telah dibersihkan.');
+        });
+
+        // Paste Button
+        btnPaste.addEventListener('click', async () => {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        rawInput.value = text;
+                        processInput();
+                        showNotification('Teks berhasil ditempel dari clipboard!');
+                        return;
+                    }
+                }
+                // Fallback if clipboard read permission is blocked in iframe
+                rawInput.focus();
+                showNotification('Silakan tekan Ctrl+V (atau tahan & Tempel) di kotak input.');
+            } catch (err) {
+                rawInput.focus();
+                showNotification('Silakan tekan Ctrl+V langsung pada kotak input.');
+            }
+        });
+
+        // Copy Formatted Output Button (iframe safe with execCommand)
+        btnCopy.addEventListener('click', () => {
+            const textToCopy = cleanOutput.value;
+            if (!textToCopy.trim()) {
+                showNotification('Belum ada hasil teks untuk disalin.');
+                return;
+            }
+
+            cleanOutput.select();
+            cleanOutput.setSelectionRange(0, 99999); // For mobile devices
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy).then(showCopySuccess);
+                }
+            } catch (err) {
+                showNotification('Gagal menyalin otomatis, silakan salin manual dari kotak hasil.');
+            }
+
+            // Clear selection highlight gracefully
+            window.getSelection().removeAllRanges();
+        });
+
+        function showCopySuccess() {
+            copyToast.classList.remove('hidden');
+            copyBtnText.textContent = 'Tersalin!';
+            setTimeout(() => {
+                copyToast.classList.add('hidden');
+                copyBtnText.textContent = 'Salin Hasil (Copy)';
+            }, 2200);
+        }
+
+        // Settings Change Listeners
+        [
+            sortOrder,
+            separatorStyle,
+            chkShowPurpose,
+            chkShowTime,
+            chkShowTotal,
+            chkWhatsappBold,
+            chkIncludeHeader
+        ].forEach(el => {
+            el.addEventListener('change', renderOutput);
+        });
+
+        chkDeduplicate.addEventListener('change', processInput);
+
+        // Toggle All Rows in Table
+        chkToggleAll.addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            parsedTransactions.forEach(item => {
+                item.selected = checked;
+            });
+            renderOutput();
+        });
+
+        // Initialize Icons and Load Sample Data on Startup so the user immediately sees their data formatted
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            loadSampleData();
+        });
+    </script>
+</body>
+</html>
